@@ -9,11 +9,12 @@ var vertexColorAttribute;
 var lastSquareUpdateTime = 0;
 var textureCoordAttribute;
 var cubeVerticesTextureCoordBuffer;
-
+var cubeVerticesNormalBuffer;
+var vertexNormalAttribute
 var cubeImage;
 var cubeTexture;
 var mvMatrix;
-
+var vertexNormalAttribute;
 var shaderProgram;
 
 var squareRotation = 0.0;
@@ -44,7 +45,6 @@ function start(){
 
   initShaders();
   initBuffers();
-  //drawScene();
   initTextures();
   setInterval(drawScene, 15);
 }
@@ -108,7 +108,10 @@ function initShaders() {
   //texture stuff
   textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
   gl.enableVertexAttribArray(textureCoordAttribute);
-  //gl.vertexAttribPointer(texCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+
+  //lightning 
+  vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
+  gl.enableVertexAttribArray(vertexNormalAttribute);
 
 
 }
@@ -203,6 +206,52 @@ function initBuffers() {
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+
+  //lisää valot
+  cubeVerticesNormalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+
+  var vertexNormals = [
+    // Front
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+
+    // Back
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+
+    // Top
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+
+    // Bottom
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+
+    // Right
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+
+    // Left
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0
+  ];
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
+
+
   //lisää tekstuurit
 
   cubeVerticesTextureCoordBuffer = gl.createBuffer();
@@ -247,6 +296,7 @@ function initBuffers() {
   cubeVerticesIndexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
 
+
 // This array defines each face as two triangles, using the
 // indices into the vertex array to specify each triangle's
 // position.
@@ -283,16 +333,20 @@ function drawScene() {
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
   gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
+  //set texture coordinates
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
   gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
 
-  //add texture to buffers
+  //add lightning
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+  gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 0, 0);
+
+  //map textures to faces.
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
   //draw
-
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
   setMatrixUniforms();
   gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
@@ -304,8 +358,9 @@ function drawScene() {
     	var delta = currentTime - lastSquareUpdateTime;
 
       squareRotation += (30 * delta) / 1000.0;
+      //squareRotation += (30 * delta) / 1000.0;
 /*
-      squareRotation += (30 * delta) / 1000.0;
+
       squareXOffset += xIncValue * ((30 * delta) / 1000.0);
       squareYOffset += yIncValue * ((30 * delta) / 1000.0);
       squareZOffset += zIncValue * ((30 * delta) / 1000.0);
@@ -342,6 +397,11 @@ function setMatrixUniforms() {
 
   var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
   gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+
+  var normalMatrix = mvMatrix.inverse();
+  normalMatrix = normalMatrix.transpose();
+  var nUniform = gl.getUniformLocation(shaderProgram, "uNormalMatrix");
+  gl.uniformMatrix4fv(nUniform, false, new Float32Array(normalMatrix.flatten()));
 }
 
 var mvMatrixStack = [];
